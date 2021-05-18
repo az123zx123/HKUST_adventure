@@ -14,7 +14,7 @@ Events.Library = [
 				buttons: {
 					'study': {
 						text: _('去学习'),
-						nextScene: { 0.3: 'LG1', 0.3: 'LG3', 0.3:'LG4',0.3:'1',1:'G' }
+						nextScene: { 0.2: 'LG1', 0.3: 'LG3', 0.5:'LG4',0.6:'1',1:'G' }
 					},
 					'play': {
 						text: _('去找人玩耍'),
