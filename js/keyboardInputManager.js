@@ -48,12 +48,12 @@ var KeyboardInputManager = {
 			75: 1, // Vim up
 			76: 2, // Vim right
 			74: 3, // Vim down
-			65: 0  // A
+			65: 0, // A
 			87: 1, // W
 			68: 2, // D
-			83: 3, // S
+			83: 3 // S
 		};
-		return map[e.which];
+		return map[e];
 	},
 	
 };

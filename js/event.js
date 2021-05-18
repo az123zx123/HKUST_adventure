@@ -1,4 +1,12 @@
 var Events = {
+
+	_EVENT_TIME_RANGE: [1, 3], // range, in minutes
+	_PANEL_FADE: 200,
+	_EAT_COOLDOWN: 5,
+	_MEDS_COOLDOWN: 7,
+	_LEAVE_COOLDOWN: 1,
+	STUN_DURATION: 4000,
+
 	init: function(options){
 		this.options = $.extend(
 			this.options,
@@ -6,26 +14,22 @@ var Events = {
 		);
 		this._debug = this.options.debug;
 		this._log = this.options.log;
-		
+
 		//build up events pool
 		Events.EventPool = [].concat(
-			Events.Global,
 			Events.Room,
-			Events.Outside,
+			Events.Library
 		);
 		Events.eventStack = [];
-		
+
 		Events.scheduleNextEvent();
-		
-		//subscribe to stateUpdates
-		$.Dispatch('stateUpdate').subscribe(Events.handleStateUpdates);
 	},
-	
+
 	options: {}, // Nothing for now
-	
+
 	currentStage: null,
-	
-	allowLeave: function(takeETbtn, leaveBtn){ 
+
+	allowLeave: function(takeETbtn, leaveBtn){
 		if(takeETbtn){
 			if(leaveBtn){
 				takeETbtn.data('leaveBtn', leaveBtn);
@@ -33,7 +37,7 @@ var Events = {
 			Events.canLeave(takeETbtn);
 		}
 	},
-	
+
 	canLeave: function(btn){
 		var basetext = (btn.data('canTakeEverything')) ? _('take everything') : _('take all you can');
 		var textbox = btn.children('span');
@@ -46,9 +50,9 @@ var Events = {
 		textbox.text( text );
 		btn.data('canLeave', takeAndLeave);
 	},
-	
+
 	activeScene: null,
-	
+
 	loadScene: function(name) {
 		Engine.log('loading scene: ' + name);
 		Events.activeScene = name;
@@ -74,7 +78,28 @@ var Events = {
 		Events.startStory(scene);
 	},
 
-	
+	drawLootRow: function(name, num){
+		var id = name.replace(' ', '-');
+		var lootRow = $('<div>').attr('id','loot_' + id).data('item', name).addClass('lootRow');
+		var take = new Button.Button({
+			id: 'take_' + id,
+			text: _(name) + ' [' + num + ']',
+			click: Events.getLoot
+		}).addClass('lootTake').data('numLeft', num).appendTo(lootRow);
+		take.mouseenter(function(){
+			Events.drawDrop(take);
+		});
+		var takeall = new Button.Button({
+			id: 'all_take_' + id,
+			text: _('take') + ' ',
+			click: Events.takeAll
+		}).addClass('lootTakeAll').appendTo(lootRow);
+		$('<span>').insertBefore(takeall.children('.cooldown'));
+		$('<div>').addClass('clear').appendTo(lootRow);
+		return lootRow;
+	},
+
+
 	startStory: function(scene) {  //write the story
 		var desc = $('#description', Events.eventPanel());
 		var leaveBtn = false;
@@ -90,6 +115,12 @@ var Events = {
 			Engine.autoSelect('#description textarea');
 		}
 
+		// Draw any loot
+		var takeETbtn;
+		if(scene.loot) {
+			takeETbtn = Events.drawLoot(scene.loot);
+		}
+
 		// Draw the buttons
 		var exitBtns = $('<div>').attr('id','exitButtons').appendTo($('#buttons', Events.eventPanel()));
 		leaveBtn = Events.drawButtons(scene);
@@ -98,7 +129,7 @@ var Events = {
 
 		Events.allowLeave(takeETbtn, leaveBtn);
 	},
-	
+
 	drawButtons: function(scene) {
 		var btns = $('#exitButtons', Events.eventPanel());
 		var btnsList = [];
@@ -217,7 +248,7 @@ var Events = {
 			}
 		}
 	},
-	
+
 	triggerEvent: function() { 		// Makes an event happen
 		if(Events.activeEvent() == null) {
 			var possibleEvents = [];
@@ -234,13 +265,12 @@ var Events = {
 			} else {
 				var r = Math.floor(Math.random()*(possibleEvents.length));
 				Events.startEvent(possibleEvents[r]);
-				AudioEngine.playEventMusic(possibleEvents[r].audio);
 			}
 		}
 
 		Events.scheduleNextEvent();
 	},
-	
+
 	activeEvent: function() {
 		if(Events.eventStack && Events.eventStack.length > 0) {
 			return Events.eventStack[0];
@@ -251,7 +281,7 @@ var Events = {
 	eventPanel: function() {
 		return Events.activeEvent().eventPanel;
 	},
-	
+
 	startEvent: function(event, options) {
 		if(event) {
 			Engine.event('game event', 'event');
@@ -270,9 +300,6 @@ var Events = {
 			$('div#wrapper').append(Events.eventPanel());
 			Events.eventPanel().animate({opacity: 1}, Events._PANEL_FADE, 'linear');
 			var currentSceneInformation = Events.activeEvent().scenes[Events.activeScene];
-			if (currentSceneInformation.blink) {
-				Events.blinkTitle();
-			}
 		}
 	},
 
@@ -284,7 +311,6 @@ var Events = {
 	},
 
 	endEvent: function() {
-		AudioEngine.stopEventMusic();
 		Events.eventPanel().animate({opacity:0}, Events._PANEL_FADE, 'linear', function() {
 			Events.eventPanel().remove();
 			Events.activeEvent().eventPanel = null;
@@ -293,9 +319,6 @@ var Events = {
 			Engine.keyLock = false;
 			Engine.tabNavigation = true;
 			Button.saveCooldown = true;
-			if (Events.BLINK_INTERVAL) {
-				Events.stopTitleBlink();
-			}
 			// Force refocus on the body. I hate you, IE.
 			$('body').focus();
 		});
@@ -308,6 +331,6 @@ var Events = {
 	},
 
 
-	
-	
+
+
 };
